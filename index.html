@@ -1,21 +1,469 @@
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário com Mapa</title>
+    
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+        
+        .form-section {
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1rem;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #fafbfc;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4facfe;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .coordinates {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .map-section {
+            position: relative;
+            background: #f8f9fa;
+        }
+        
+        #map {
+            height: 100%;
+            min-height: 600px;
+        }
+        
+        .map-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .map-info h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1rem;
+        }
+        
+        .map-info p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .status-message.show {
+            opacity: 1;
+            transform: translateY(-5px);
+        }
+        
+        .status-message.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .status-message.error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-section {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .coordinates {
+                grid-template-columns: 1fr;
+            }
+            
+            .map-info {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📍 Formulário Geolocalizado</h1>
+            <p>Clique no mapa para selecionar uma localização e envie seu comentário</p>
+        </div>
+        
+        <div class="content">
+            <div class="form-section">
+                <form id="commentForm">
+                    <div class="form-group">
+                        <label for="comment">💬 Seu Comentário:</label>
+                        <textarea 
+                            id="comment" 
+                            name="comment" 
+                            placeholder="Escreva seu comentário aqui..."
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>📍 Coordenadas:</label>
+                        <div class="coordinates">
+                            <div>
+                                <input 
+                                    type="number" 
+                                    id="latitude" 
+                                    name="latitude" 
+                                    placeholder="Latitude" 
+                                    step="any"
+                                    readonly
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <input 
+                                    type="number" 
+                                    id="longitude" 
+                                    name="longitude" 
+                                    placeholder="Longitude" 
+                                    step="any"
+                                    readonly
+                                    required
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        🚀 Enviar Comentário
+                    </button>
+                    
+                    <div id="statusMessage" class="status-message"></div>
+                </form>
+            </div>
+            
+            <div class="map-section">
+                <div class="map-info">
+                    <h3>🗺️ Como usar:</h3>
+                    <p>• Clique no mapa para marcar um ponto</p>
+                    <p>• As coordenadas serão preenchidas automaticamente</p>
+                    <p>• Escreva seu comentário e envie</p>
+                </div>
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
 
-<script src="/firebase-config.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <script>
+        // CONFIGURAÇÃO DO FIREBASE
+        // O Vercel agora injetará essas configurações em um novo arquivo.
+        const firebaseConfig = {
+            apiKey: '%%apiKey%%',
+            authDomain: '%%authDomain%%',
+            projectId: '%%projectId%%',
+            storageBucket: '%%storageBucket%%',
+            messagingSenderId: '%%messagingSenderId%%',
+            appId: '%%appId%%'
+        };
 
-<script>
-    // Inicializar Firebase
-    let db;
-    try {
-        // Agora, use a variável global que o Vercel criou
-        firebase.initializeApp(window.firebaseConfig);
-        db = firebase.firestore();
-        console.log('Firebase inicializado com sucesso');
-    } catch (error) {
-        console.error('Erro ao inicializar Firebase:', error);
-        showStatus('Erro: Configure o Firebase primeiro', 'error');
-    }
+        // Inicializar Firebase
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            console.log('Firebase inicializado com sucesso');
+        } catch (error) {
+            console.error('Erro ao inicializar Firebase:', error);
+            showStatus('Erro: Configure o Firebase primeiro', 'error');
+        }
 
-    // ... (o resto do seu código permanece o mesmo)
-</script>
+        // Inicializar o mapa
+        const map = L.map('map').setView([-23.5505, -46.6333], 10); // São Paulo como centro inicial
 
+        // Adicionar camada do OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Variável para armazenar o marcador atual
+        let currentMarker = null;
+
+        // Função para adicionar marcador no mapa
+        function addMarker(lat, lng) {
+            // Remover marcador anterior se existir
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+            }
+            
+            // Criar novo marcador com ícone personalizado
+            const customIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.3);"></div>',
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
+            });
+            
+            currentMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+            
+            // Atualizar campos de coordenadas
+            document.getElementById('latitude').value = lat.toFixed(6);
+            document.getElementById('longitude').value = lng.toFixed(6);
+        }
+
+        // Evento de clique no mapa
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            addMarker(lat, lng);
+        });
+
+        // Função para mostrar mensagens de status
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status-message ${type} show`;
+            
+            setTimeout(() => {
+                statusElement.classList.remove('show');
+            }, 4000);
+        }
+
+        // Função para salvar dados no Firebase
+        async function saveToFirebase(data) {
+            try {
+                if (!db) {
+                    throw new Error('Firebase não está configurado');
+                }
+                
+                const docRef = await db.collection('comments').add({
+                    ...data,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                console.log('Documento salvo com ID:', docRef.id);
+                return docRef.id;
+            } catch (error) {
+                console.error('Erro ao salvar no Firebase:', error);
+                throw error;
+            }
+        }
+
+        // Manipular envio do formulário
+        document.getElementById('commentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const comment = document.getElementById('comment').value.trim();
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+            
+            // Validação
+            if (!comment) {
+                showStatus('Por favor, escreva um comentário', 'error');
+                return;
+            }
+            
+            if (!latitude || !longitude) {
+                showStatus('Por favor, clique no mapa para selecionar uma localização', 'error');
+                return;
+            }
+            
+            // Desabilitar botão durante o envio
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Enviando...';
+            
+            try {
+                const data = {
+                    comment: comment,
+                    latitude: latitude,
+                    longitude: longitude,
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                };
+                
+                await saveToFirebase(data);
+                
+                showStatus('✅ Comentário salvo com sucesso!', 'success');
+                
+                // Limpar formulário
+                document.getElementById('comment').value = '';
+                document.getElementById('latitude').value = '';
+                document.getElementById('longitude').value = '';
+                
+                // Remover marcador do mapa
+                if (currentMarker) {
+                    map.removeLayer(currentMarker);
+                    currentMarker = null;
+                }
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                showStatus('❌ Erro ao salvar. Verifique a configuração do Firebase.', 'error');
+            } finally {
+                // Reabilitar botão
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Enviar Comentário';
+            }
+        });
+
+        // Tentar obter localização do usuário
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    map.setView([lat, lng], 13);
+                },
+                function(error) {
+                    console.log('Erro ao obter localização:', error);
+                    // Manter São Paulo como centro padrão
+                }
+            );
+        }
+
+        // Adicionar animação de carregamento ao mapa
+        map.whenReady(function() {
+            console.log('Mapa carregado com sucesso');
+        });
+    </script>
+</body>
+
+</html>
