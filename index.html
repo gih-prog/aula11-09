@@ -1,12 +1,10 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ent="width=device-width, initial-scale=1.0">
     <title>Formulário com Mapa</title>
     
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     
+    <!-- Firebase -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
     
@@ -290,153 +288,210 @@
         </div>
     </div>
 
+    <!-- Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     
-    <script src="/api/firebaseConfig.js"></script>
-    
     <script>
-        // Função para inicializar o mapa e os outros elementos após carregar as credenciais
-        function initializeApp(firebaseConfig) {
-            // Inicializar Firebase
-            let db;
-            try {
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.firestore();
-                console.log('Firebase inicializado com sucesso');
-            } catch (error) {
-                console.error('Erro ao inicializar Firebase:', error);
-                showStatus('Erro: Configure o Firebase primeiro', 'error');
-                return;
+        // CONFIGURAÇÃO DO FIREBASE
+        // IMPORTANTE: Substitua pela sua configuração do Firebase
+
+        // Inicializar Firebase
+    
+    let db; // Torne a variável `db` global ou acessível
+
+    async function initializeFirebase() {
+        try {
+            const response = await fetch('/api/firebaseConfig');
+            const firebaseConfig = await response.json();
+            
+            firebase.initializeApp(firebaseConfig);
+            
+            // Atribua a instância do Firestore à variável `db`
+            db = firebase.firestore();
+            
+            console.log('Firebase e Firestore inicializados com sucesso!');
+
+            // Agora você pode chamar a função de salvar com segurança
+            // Exemplo:
+            // const dataToSave = { name: 'João', message: 'Olá, mundo!' };
+            // await saveToFirebase(dataToSave);
+        } catch (error) {
+            console.error('Erro na inicialização do Firebase:', error);
+        }
+    }
+
+    async function saveToFirebase(data) {
+        try {
+            if (!db) {
+                // Se a variável `db` ainda não foi inicializada, chame a função e espere
+                await initializeFirebase();
             }
-
-            // Inicializar o mapa
-            const map = L.map('map').setView([-23.5505, -46.6333], 10); // São Paulo como centro inicial
-
-            // Adicionar camada do OpenStreetMap
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 19
-            }).addTo(map);
-
-            let currentMarker = null;
-
-            function addMarker(lat, lng) {
-                if (currentMarker) {
-                    map.removeLayer(currentMarker);
-                }
-                const customIcon = L.divIcon({
-                    className: 'custom-marker',
-                    html: '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.3);"></div>',
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 13]
-                });
-                currentMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
-                document.getElementById('latitude').value = lat.toFixed(6);
-                document.getElementById('longitude').value = lng.toFixed(6);
-            }
-
-            map.on('click', function(e) {
-                const { lat, lng } = e.latlng;
-                addMarker(lat, lng);
+            
+            const docRef = await db.collection('comments').add({
+                ...data,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
+            
+            console.log('Documento salvo com ID:', docRef.id);
+            return docRef.id;
+        } catch (error) {
+            console.error('Erro ao salvar no Firebase:', error);
+            throw error;
+        }
+    }
 
-            function showStatus(message, type) {
-                const statusElement = document.getElementById('statusMessage');
-                statusElement.textContent = message;
-                statusElement.className = `status-message ${type} show`;
-                setTimeout(() => {
-                    statusElement.classList.remove('show');
-                }, 4000);
+    // Chama a função de inicialização quando a página carrega
+    initializeFirebase();
+    
+
+        // Inicializar o mapa
+        const map = L.map('map').setView([-23.5505, -46.6333], 10); // São Paulo como centro inicial
+
+        // Adicionar camada do OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Variável para armazenar o marcador atual
+        let currentMarker = null;
+
+        // Função para adicionar marcador no mapa
+        function addMarker(lat, lng) {
+            // Remover marcador anterior se existir
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
             }
-
-            async function saveToFirebase(data) {
-                try {
-                    if (!db) {
-                        throw new Error('Firebase não está configurado');
-                    }
-                    const docRef = await db.collection('comments').add({
-                        ...data,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    console.log('Documento salvo com ID:', docRef.id);
-                    return docRef.id;
-                } catch (error) {
-                    console.error('Erro ao salvar no Firebase:', error);
-                    throw error;
-                }
-            }
-
-            document.getElementById('commentForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const submitBtn = document.getElementById('submitBtn');
-                const comment = document.getElementById('comment').value.trim();
-                const latitude = parseFloat(document.getElementById('latitude').value);
-                const longitude = parseFloat(document.getElementById('longitude').value);
-                if (!comment) {
-                    showStatus('Por favor, escreva um comentário', 'error');
-                    return;
-                }
-                if (!latitude || !longitude) {
-                    showStatus('Por favor, clique no mapa para selecionar uma localização', 'error');
-                    return;
-                }
-                submitBtn.disabled = true;
-                submitBtn.textContent = '⏳ Enviando...';
-                try {
-                    const data = {
-                        comment: comment,
-                        latitude: latitude,
-                        longitude: longitude,
-                        userAgent: navigator.userAgent,
-                        timestamp: new Date().toISOString()
-                    };
-                    await saveToFirebase(data);
-                    showStatus('✅ Comentário salvo com sucesso!', 'success');
-                    document.getElementById('comment').value = '';
-                    document.getElementById('latitude').value = '';
-                    document.getElementById('longitude').value = '';
-                    if (currentMarker) {
-                        map.removeLayer(currentMarker);
-                        currentMarker = null;
-                    }
-                } catch (error) {
-                    console.error('Erro:', error);
-                    showStatus('❌ Erro ao salvar. Verifique a configuração do Firebase.', 'error');
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '🚀 Enviar Comentário';
-                }
+            
+            // Criar novo marcador com ícone personalizado
+            const customIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.3);"></div>',
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
             });
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        map.setView([lat, lng], 13);
-                    },
-                    function(error) {
-                        console.log('Erro ao obter localização:', error);
-                    }
-                );
-            }
-
-            map.whenReady(function() {
-                console.log('Mapa carregado com sucesso');
-            });
+            
+            currentMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+            
+            // Atualizar campos de coordenadas
+            document.getElementById('latitude').value = lat.toFixed(6);
+            document.getElementById('longitude').value = lng.toFixed(6);
         }
 
-        // Busca as credenciais da API do Vercel e só então inicializa a aplicação
-        fetch('/api/firebaseConfig')
-            .then(response => response.json())
-            .then(firebaseConfig => {
-                console.log("Credenciais recebidas com sucesso!");
-                initializeApp(firebaseConfig);
-            })
-            .catch(error => {
-                console.error('Erro ao buscar as credenciais do Firebase:', error);
-                document.getElementById('statusMessage').textContent = 'Erro ao carregar a aplicação. Tente novamente.';
-            });
+        // Evento de clique no mapa
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            addMarker(lat, lng);
+        });
+
+        // Função para mostrar mensagens de status
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status-message ${type} show`;
+            
+            setTimeout(() => {
+                statusElement.classList.remove('show');
+            }, 4000);
+        }
+
+        // Função para salvar dados no Firebase
+        async function saveToFirebase(data) {
+            try {
+                if (!db) {
+                    throw new Error('Firebase não está configurado');
+                }
+                
+                const docRef = await db.collection('comments').add({
+                    ...data,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                console.log('Documento salvo com ID:', docRef.id);
+                return docRef.id;
+            } catch (error) {
+                console.error('Erro ao salvar no Firebase:', error);
+                throw error;
+            }
+        }
+
+        // Manipular envio do formulário
+        document.getElementById('commentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const comment = document.getElementById('comment').value.trim();
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+            
+            // Validação
+            if (!comment) {
+                showStatus('Por favor, escreva um comentário', 'error');
+                return;
+            }
+            
+            if (!latitude || !longitude) {
+                showStatus('Por favor, clique no mapa para selecionar uma localização', 'error');
+                return;
+            }
+            
+            // Desabilitar botão durante o envio
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Enviando...';
+            
+            try {
+                const data = {
+                    comment: comment,
+                    latitude: latitude,
+                    longitude: longitude,
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                };
+                
+                await saveToFirebase(data);
+                
+                showStatus('✅ Comentário salvo com sucesso!', 'success');
+                
+                // Limpar formulário
+                document.getElementById('comment').value = '';
+                document.getElementById('latitude').value = '';
+                document.getElementById('longitude').value = '';
+                
+                // Remover marcador do mapa
+                if (currentMarker) {
+                    map.removeLayer(currentMarker);
+                    currentMarker = null;
+                }
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                showStatus('❌ Erro ao salvar. Verifique a configuração do Firebase.', 'error');
+            } finally {
+                // Reabilitar botão
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Enviar Comentário';
+            }
+        });
+
+        // Tentar obter localização do usuário
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    map.setView([lat, lng], 13);
+                },
+                function(error) {
+                    console.log('Erro ao obter localização:', error);
+                    // Manter São Paulo como centro padrão
+                }
+            );
+        }
+
+        // Adicionar animação de carregamento ao mapa
+        map.whenReady(function() {
+            console.log('Mapa carregado com sucesso');
+        });
     </script>
 </body>
 </html>
