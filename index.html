@@ -299,12 +299,12 @@
         // CONFIGURAÇÃO DO FIREBASE
         // IMPORTANTE: Substitua pela sua configuração do Firebase
         const firebaseConfig = {
-  apiKey: "AIzaSyAxD3r-vUjrV5nHv9NMQ-pk8lBt3C_rFfg",
-  authDomain: "mobille-abea7.firebaseapp.com",
-  projectId: "mobille-abea7",
-  storageBucket: "mobille-abea7.firebasestorage.app",
-  messagingSenderId: "139995111818",
-  appId: "1:139995111818:web:3b5c1225fe8de9e20d2873"
+  apiKey: process.env.apiKey,
+  authDomain: process.env.authDomain,
+  projectId: process.env.projectId,
+  storageBucket: process.env.storageBucket,
+  messagingSenderId: process.env.messagingSenderId,
+  appId: process.env.appId
 };
 
         // Inicializar Firebase
@@ -470,3 +470,4 @@
 </body>
 
 </html>
+
