@@ -1,3 +1,4 @@
+print('teste')
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -298,25 +299,55 @@
     <script>
         // CONFIGURAÇÃO DO FIREBASE
         // IMPORTANTE: Substitua pela sua configuração do Firebase
-        const firebaseConfig = {
-  apiKey: process.env.apiKey,
-  authDomain: process.env.authDomain,
-  projectId: process.env.projectId,
-  storageBucket: process.env.storageBucket,
-  messagingSenderId: process.env.messagingSenderId,
-  appId: process.env.appId
-};
 
         // Inicializar Firebase
-        let db;
+    
+    let db; // Torne a variável `db` global ou acessível
+
+    async function initializeFirebase() {
         try {
+            const response = await fetch('/api/firebaseConfig');
+            const firebaseConfig = await response.json();
+            
             firebase.initializeApp(firebaseConfig);
+            
+            // Atribua a instância do Firestore à variável `db`
             db = firebase.firestore();
-            console.log('Firebase inicializado com sucesso');
+            
+            console.log('Firebase e Firestore inicializados com sucesso!');
+
+            // Agora você pode chamar a função de salvar com segurança
+            // Exemplo:
+            // const dataToSave = { name: 'João', message: 'Olá, mundo!' };
+            // await saveToFirebase(dataToSave);
         } catch (error) {
-            console.error('Erro ao inicializar Firebase:', error);
-            showStatus('Erro: Configure o Firebase primeiro', 'error');
+            console.error('Erro na inicialização do Firebase:', error);
         }
+    }
+
+    async function saveToFirebase(data) {
+        try {
+            if (!db) {
+                // Se a variável `db` ainda não foi inicializada, chame a função e espere
+                await initializeFirebase();
+            }
+            
+            const docRef = await db.collection('comments').add({
+                ...data,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            console.log('Documento salvo com ID:', docRef.id);
+            return docRef.id;
+        } catch (error) {
+            console.error('Erro ao salvar no Firebase:', error);
+            throw error;
+        }
+    }
+
+    // Chama a função de inicialização quando a página carrega
+    initializeFirebase();
+    
 
         // Inicializar o mapa
         const map = L.map('map').setView([-23.5505, -46.6333], 10); // São Paulo como centro inicial
@@ -468,6 +499,4 @@
         });
     </script>
 </body>
-
 </html>
-
