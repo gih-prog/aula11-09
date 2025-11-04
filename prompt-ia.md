@@ -14,4 +14,6 @@ O visual deve ser moderno e adaptável a dispositivos móveis.
 
 Prove exemplos de configuração e explique onde inserir as credenciais do Firebase.
 
-Forneça todo o código em um único arquivo HTML, pronto para ser testado e adaptado.
+Gere também um arquivo de documentação explicando os principais pontos do projeto, utilizando a linguagem Markdown (.md), mostrando exemplos de sintaxe e destacando os benefícios do Markdown para organização técnica.
+
+Forneça todo o código em um único arquivo HTML, pronto para ser testado e adaptado, e a documentação em Markdown clara e prática
