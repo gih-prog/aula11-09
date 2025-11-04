@@ -30,6 +30,18 @@ O formulário proporciona uma interação simples e intuitiva, tornando fácil p
 
 Sugestões para melhorar a UX (layout, textos, validação de inputs, feedbacks visuais) são bem-vindas! Abra uma Issue ou Pull Request para contribuir.
 
+  
+---
+
 ## Licença
 
 Distribuído sob licença MIT.
+
+## Contribuindo
+
+Sugestões para melhorar o código ou a experiência do usuário são bem-vindas!  
+Abra uma issue ou envie um Pull Request.
+
+---
+
+*Para instruções detalhadas sobre Markdown, consulte a [documentação oficial do GitHub](https://docs.github.com/pt/github/writing-on-github/getting-started-with-writing-and-formatting-on-github).*
